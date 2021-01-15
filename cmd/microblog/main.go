@@ -6,6 +6,7 @@ import (
 	"os/signal"
 
 	_ "github.com/joho/godotenv/autoload"
+	"github.com/lucabecci/golang-blog-psql.git/internal/data"
 	"github.com/lucabecci/golang-blog-psql.git/internal/server"
 )
 
@@ -13,6 +14,12 @@ func main() {
 	port := os.Getenv("PORT") //env var
 	srv, err := server.New(port)
 	if err != nil {
+		log.Fatal(err)
+	}
+
+	//database connection
+	d := data.New()
+	if err := d.DB.Ping(); err != nil {
 		log.Fatal(err)
 	}
 
@@ -26,4 +33,5 @@ func main() {
 
 	//Shutdown
 	srv.Close()
+	data.Close()
 }

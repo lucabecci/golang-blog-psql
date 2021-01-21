@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi"
+	v1 "github.com/lucabecci/golang-blog-psql.git/internal/server/v1"
 )
 
 // Server is a base server configuration.
@@ -15,6 +16,8 @@ type Server struct {
 
 func New(port string) (*Server, error) {
 	r := chi.NewRouter()
+
+	r.Mount("/api/v1", v1.New())
 
 	serv := &http.Server{
 		Addr:         ":" + port,

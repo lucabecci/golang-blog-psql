@@ -2,15 +2,16 @@ package data
 
 import (
 	"context"
+	"time"
 
 	"github.com/lucabecci/golang-blog-psql.git/pkg/post"
 )
 
-type PostRespository struct {
+type PostRepository struct {
 	Data *Data
 }
 
-func (pr *PostRespository) GetAll(ctx context.Context) ([]post.Post, error) {
+func (pr *PostRepository) GetAll(ctx context.Context) ([]post.Post, error) {
 	q := `
     SELECT id, body, user_id, created_at, updated_at
         FROM posts;
@@ -33,7 +34,7 @@ func (pr *PostRespository) GetAll(ctx context.Context) ([]post.Post, error) {
 	return posts, nil
 }
 
-func (pr *PostRespository) GetOne(ctx context.Context, id uint) (post.Post, error) {
+func (pr *PostRepository) GetOne(ctx context.Context, id uint) (post.Post, error) {
 	q := `
     SELECT id, body, user_id, created_at, updated_at
         FROM posts WHERE id = $1;
@@ -50,7 +51,7 @@ func (pr *PostRespository) GetOne(ctx context.Context, id uint) (post.Post, erro
 	return p, nil
 }
 
-func (pr *PostRespository) GetByUser(ctx context.Context, userID uint) ([]post.Post, error) {
+func (pr *PostRepository) GetByUser(ctx context.Context, userID uint) ([]post.Post, error) {
 	q := `
     SELECT id, body, user_id, created_at, updated_at
         FROM posts
@@ -72,4 +73,69 @@ func (pr *PostRespository) GetByUser(ctx context.Context, userID uint) ([]post.P
 	}
 
 	return posts, nil
+}
+
+func (pr *PostRepository) Create(ctx context.Context, p *post.Post) error {
+	q := `
+    INSERT INTO posts (body, user_id, created_at, updated_at)
+        VALUES ($1, $2, $3, $4)
+        RETURNING id;
+    `
+
+	stmt, err := pr.Data.DB.PrepareContext(ctx, q)
+	if err != nil {
+		return err
+	}
+
+	defer stmt.Close()
+
+	row := stmt.QueryRowContext(ctx, p.Body, p.UserID, time.Now(), time.Now())
+
+	err = row.Scan(&p.ID)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (pr *PostRepository) Update(ctx context.Context, id uint, p post.Post) error {
+	q := `
+    UPDATE posts set body=$1, updated_at=$2
+        WHERE id=$3;
+    `
+
+	stmt, err := pr.Data.DB.PrepareContext(ctx, q)
+	if err != nil {
+		return err
+	}
+
+	defer stmt.Close()
+
+	_, err = stmt.ExecContext(
+		ctx, p.Body, time.Now(), id,
+	)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (pr *PostRepository) Delete(ctx context.Context, id uint) error {
+	q := `DELETE FROM posts WHERE id=$1;`
+
+	stmt, err := pr.Data.DB.PrepareContext(ctx, q)
+	if err != nil {
+		return err
+	}
+
+	defer stmt.Close()
+
+	_, err = stmt.ExecContext(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
